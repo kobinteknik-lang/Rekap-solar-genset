@@ -49,7 +49,7 @@
     <div class="row mb-3 no-print">
         <div class="col-12 text-center">
             <h2 class="fw-bold text-dark"><i class="fa-solid fa-gas-pump text-warning me-2"></i>Rekap Pemakaian Solar Genset</h2>
-            <p class="text-muted m-0">Sistem Pencatatan Volume Flow Meter Fill-Rite</p>
+            <p class="text-muted m-0">Sistem Pencatatan Volume Flow Meter Fill-Rite (Online Sync)</p>
             <span class="badge bg-dark mt-2 fs-6">Kapasitas Genset: 1250 kVA</span>
         </div>
     </div>
@@ -156,7 +156,7 @@
                             <label class="form-label fw-semibold">Keterangan / Catatan</label>
                             <input type="text" id="keterangan" class="form-control" placeholder="Opsional (misal: Pengisian Rutin)">
                         </div>
-                        <button type="submit" class="btn btn-primary w-100 fw-bold shadow-sm">
+                        <button type="submit" id="btnSubmit" class="btn btn-primary w-100 fw-bold shadow-sm">
                             <i class="fa-solid fa-plus me-1"></i> Tambah Data
                         </button>
                     </form>
@@ -172,14 +172,14 @@
                             <small class="text-muted no-print">Menampilkan: <strong id="labelStatusTabel">Semua PN</strong></small>
                         </div>
                         <div class="no-print d-flex gap-2">
+                            <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="muatDataDariSheets()" title="Refresh Data">
+                                <i class="fa-solid fa-rotate me-1"></i> Refresh
+                            </button>
                             <button class="btn btn-success btn-sm fw-semibold" onclick="cetakPDF()">
                                 <i class="fa-solid fa-file-pdf me-1"></i> Cetak PDF
                             </button>
                             <button class="btn btn-outline-secondary btn-sm" onclick="window.print()" title="Cetak dengan Printer">
                                 <i class="fa-solid fa-print"></i>
-                            </button>
-                            <button class="btn btn-outline-danger btn-sm" onclick="hapusSemuaData()" title="Hapus Semua Data">
-                                <i class="fa-solid fa-trash-can"></i>
                             </button>
                         </div>
                     </div>
@@ -193,11 +193,10 @@
                                     <th>Fill-Rite Awal - Akhir</th>
                                     <th>Total Solar (L)</th>
                                     <th>Ket.</th>
-                                    <th class="no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelData">
-                                <!-- Data dari JS -->
+                                <!-- Data dari JS/Google Sheets -->
                             </tbody>
                         </table>
                     </div>
@@ -208,63 +207,102 @@
 </div>
 
 <script>
+    // PASTE URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA DI SINI
+    const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx.../exec";
+
+    let listDataGlobal = [];
+
     document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('tanggal').valueAsDate = new Date();
-        tampilkanData();
+        muatDataDariSheets();
     });
 
-    const formGenset = document.getElementById('formGenset');
+    // 1. MENGAMBIL HISTORY DATA DARI GOOGLE SHEETS VIA DO-GET
+    function muatDataDariSheets() {
+        const tbody = document.getElementById('tabelData');
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="text-center py-4 text-primary">
+                    <i class="fa-solid fa-spinner fa-spin fa-2x mb-2"></i>
+                    <div>Memuat riwayat dari Google Sheets...</div>
+                </td>
+            </tr>`;
 
+        fetch(SCRIPT_URL)
+            .then(res => res.json())
+            .then(data => {
+                listDataGlobal = Array.isArray(data) ? data : [];
+                tampilkanData();
+            })
+            .catch(err => {
+                console.error("Gagal sinkronisasi dengan Google Sheets:", err);
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3"><i class="fa-solid fa-circle-exclamation me-1"></i> Gagal terhubung ke Google Sheets.</td></tr>`;
+            });
+    }
+
+    // 2. MENGIRIM DATA BARU KE GOOGLE SHEETS VIA DO-POST
+    const formGenset = document.getElementById('formGenset');
     formGenset.addEventListener('submit', function(e) {
         e.preventDefault();
 
-        const tanggal = document.getElementById('tanggal').value;
-        const pn = document.getElementById('pn').value;
-        const genset = document.getElementById('genset').value;
+        const btnSubmit = document.getElementById('btnSubmit');
         const fillriteAwal = parseFloat(document.getElementById('fillriteAwal').value);
         const fillriteAkhir = parseFloat(document.getElementById('fillriteAkhir').value);
-        const keterangan = document.getElementById('keterangan').value || '-';
 
         if (fillriteAkhir < fillriteAwal) {
             alert("Meteran Fill-Rite Akhir tidak boleh lebih kecil dari Meteran Awal!");
             return;
         }
 
-        const totalSolar = fillriteAkhir - fillriteAwal;
+        btnSubmit.disabled = true;
+        btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Menyimpan...`;
 
         const dataBaru = {
             id: Date.now(),
-            tanggal,
-            pn,
-            genset,
-            fillriteAwal,
-            fillriteAkhir,
-            totalSolar: totalSolar.toFixed(1),
-            keterangan
+            tanggal: document.getElementById('tanggal').value,
+            pn: document.getElementById('pn').value,
+            genset: document.getElementById('genset').value,
+            fillriteAwal: fillriteAwal,
+            fillriteAkhir: fillriteAkhir,
+            totalSolar: (fillriteAkhir - fillriteAwal).toFixed(1),
+            keterangan: document.getElementById('keterangan').value || '-'
         };
 
-        const listData = JSON.parse(localStorage.getItem('rekapFillrite1250')) || [];
-        listData.push(dataBaru);
-        localStorage.setItem('rekapFillrite1250', JSON.stringify(listData));
-
-        formGenset.reset();
-        document.getElementById('tanggal').valueAsDate = new Date();
-        tampilkanData();
+        // Mengirimkan payload JSON ke Google Apps Script
+        fetch(SCRIPT_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(dataBaru)
+        })
+        .then(() => {
+            alert("Data berhasil tersimpan di Google Sheets!");
+            formGenset.reset();
+            document.getElementById('tanggal').valueAsDate = new Date();
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-plus me-1"></i> Tambah Data`;
+            
+            // Muat ulang history agar tabel menyinkronkan data terbaru dari server
+            setTimeout(muatDataDariSheets, 1000);
+        })
+        .catch(err => {
+            alert("Gagal mengirim data: " + err);
+            btnSubmit.disabled = false;
+            btnSubmit.innerHTML = `<i class="fa-solid fa-plus me-1"></i> Tambah Data`;
+        });
     });
 
+    // 3. RENDER DATA TERFILTER PADA TABEL DAN DASHBOARD
     function tampilkanData() {
         const filterPN = document.getElementById('filterPN').value;
-        const listData = JSON.parse(localStorage.getItem('rekapFillrite1250')) || [];
         const tbody = document.getElementById('tabelData');
         tbody.innerHTML = '';
 
-        // Filter Data Berdasarkan Dropdown Filter PN
-        const dataFiltered = listData.filter(item => {
+        const dataFiltered = listDataGlobal.filter(item => {
             if (filterPN === 'SEMUA') return true;
             return item.pn === filterPN;
         });
 
-        // Update Label Tampilan
         const textFilter = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
         document.querySelectorAll('.labelPN').forEach(el => el.innerText = textFilter);
         document.getElementById('labelStatusTabel').innerText = textFilter;
@@ -272,10 +310,10 @@
         let totalSolar = 0;
 
         if (dataFiltered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
         } else {
             dataFiltered.forEach(item => {
-                totalSolar += parseFloat(item.totalSolar);
+                totalSolar += parseFloat(item.totalSolar || 0);
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -285,44 +323,18 @@
                     <td>${item.fillriteAwal} - ${item.fillriteAkhir} L</td>
                     <td><strong>${item.totalSolar} L</strong></td>
                     <td>${item.keterangan}</td>
-                    <td class="no-print"><button class="btn btn-outline-danger btn-sm" onclick="hapusData(${item.id})"><i class="fa-solid fa-xmark"></i></button></td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Update Statistik sesuai Filter yang aktif
+        // Kalkulasi statistik
         const totalTransaksi = dataFiltered.length;
         const rataRata = totalTransaksi > 0 ? (totalSolar / totalTransaksi) : 0;
 
         document.getElementById('statTotalSolar').innerText = totalSolar.toFixed(1);
         document.getElementById('statTotalTransaksi').innerText = totalTransaksi;
         document.getElementById('statRataRata').innerText = rataRata.toFixed(1);
-    }
-
-    function hapusData(id) {
-        let listData = JSON.parse(localStorage.getItem('rekapFillrite1250')) || [];
-        listData = listData.filter(item => item.id !== id);
-        localStorage.setItem('rekapFillrite1250', JSON.stringify(listData));
-        tampilkanData();
-    }
-
-    function hapusSemuaData() {
-        const filterPN = document.getElementById('filterPN').value;
-        const pesan = filterPN === 'SEMUA' 
-            ? "Apakah Anda yakin ingin menghapus SELURUH data rekap?" 
-            : `Apakah Anda yakin ingin menghapus seluruh data untuk ${filterPN}?`;
-
-        if (confirm(pesan)) {
-            if (filterPN === 'SEMUA') {
-                localStorage.removeItem('rekapFillrite1250');
-            } else {
-                let listData = JSON.parse(localStorage.getItem('rekapFillrite1250')) || [];
-                listData = listData.filter(item => item.pn !== filterPN);
-                localStorage.setItem('rekapFillrite1250', JSON.stringify(listData));
-            }
-            tampilkanData();
-        }
     }
 
     function cetakPDF() {
