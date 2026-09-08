@@ -207,7 +207,6 @@
 </div>
 
 <script>
-    // PASTE URL DEPLOYMENT GOOGLE APPS SCRIPT ANDA DI SINI
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZuywZAfpbglCTdrSb0yrciDqo-MdcIQSx7mcCQzPwSGum_MBV2Z2KG4KL6RDoZXXX/exec";
 
     let listDataGlobal = [];
@@ -268,7 +267,6 @@
             keterangan: document.getElementById('keterangan').value || '-'
         };
 
-        // Mengirimkan payload JSON ke Google Apps Script
         fetch(SCRIPT_URL, {
             method: 'POST',
             mode: 'no-cors',
@@ -282,7 +280,6 @@
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = `<i class="fa-solid fa-plus me-1"></i> Tambah Data`;
             
-            // Muat ulang history agar tabel menyinkronkan data terbaru dari server
             setTimeout(muatDataDariSheets, 1000);
         })
         .catch(err => {
@@ -315,9 +312,22 @@
             dataFiltered.forEach(item => {
                 totalSolar += parseFloat(item.totalSolar || 0);
 
+                // --- PERBAIKAN FORMAT TANGGAL ---
+                let tanggalTampil = item.tanggal || '-';
+                if (item.tanggal) {
+                    const d = new Date(item.tanggal);
+                    if (!isNaN(d.getTime())) {
+                        tanggalTampil = d.toLocaleDateString('id-ID', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric'
+                        });
+                    }
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td>${item.tanggal}</td>
+                    <td>${tanggalTampil}</td>
                     <td><span class="badge ${item.pn === 'PN 1' ? 'bg-primary' : 'bg-warning text-dark'}">${item.pn || '-'}</span></td>
                     <td><span class="badge bg-dark">${item.genset || '-'}</span></td>
                     <td>${item.fillriteAwal} - ${item.fillriteAkhir} L</td>
