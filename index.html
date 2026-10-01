@@ -187,7 +187,7 @@
                             <input type="text" id="teknisi" class="form-control" placeholder="Contoh: BAYU" required>
                         </div>
 
-                        <!-- INPUT JAM AWAL & AKHIR (DURASI OTOMATIS) -->
+                        <!-- INPUT JAM AWAL & AKHIR -->
                         <div class="row">
                             <div class="col-6 mb-3">
                                 <label class="form-label fw-semibold">Jam Awal</label>
@@ -287,7 +287,6 @@
         muatDataDariSheets();
     });
 
-    // HITUNG DURASI OTOMATIS BERDASARKAN JAM AWAL DAN AKHIR
     function hitungDurasiOtomatis() {
         const jamAwalVal = document.getElementById('jamAwal').value;
         const jamAkhirVal = document.getElementById('jamAkhir').value;
@@ -299,7 +298,6 @@
             let t1 = h1 * 60 + m1;
             let t2 = h2 * 60 + m2;
 
-            // Jika jam akhir melintasi tengah malam (misal 22:00 ke 02:00)
             if (t2 < t1) {
                 t2 += 24 * 60;
             }
@@ -311,7 +309,6 @@
         }
     }
 
-    // 1. MEMUAT DATA
     function muatDataDariSheets() {
         const tbody = document.getElementById('tabelData');
         tbody.innerHTML = `
@@ -334,7 +331,6 @@
             });
     }
 
-    // 2. MENAMBAH DATA BARU
     const formGenset = document.getElementById('formGenset');
     formGenset.addEventListener('submit', function(e) {
         e.preventDefault();
@@ -395,7 +391,6 @@
         });
     });
 
-    // 3. TAMPILKAN DATA & CALCULATE STATS
     function tampilkanData() {
         const filterPN = document.getElementById('filterPN').value;
         const tbody = document.getElementById('tabelData');
@@ -416,14 +411,19 @@
             tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
         } else {
             dataFiltered.forEach((item) => {
-                const jam = parseFloat(item.jamOperasi || 0);
-                const solar = parseFloat(item.totalSolar || (item.fillriteAkhir - item.fillriteAwal) || 0);
+                // FALLBACK PENCARIAN KEY AGAR TIDAK UNDEFINED
+                const frAwal = item.fillriteAwal ?? item.frAwal ?? item['FR Awal'] ?? item['Fill-Rite Awal'] ?? '-';
+                const frAkhir = item.fillriteAkhir ?? item.frAkhir ?? item['FR Akhir'] ?? item['Fill-Rite Akhir'] ?? '-';
+                const namaTeknisi = item.teknisi ?? item.operator ?? item['Teknisi'] ?? item['Operator'] ?? '-';
+                const unitGenset = item.genset ?? item.unit ?? item['Genset'] ?? item['Unit'] ?? '-';
+                
+                const jam = parseFloat(item.jamOperasi ?? item.durasi ?? item['Jam Operasi'] ?? 0);
+                const solar = parseFloat(item.totalSolar ?? (parseFloat(frAkhir) - parseFloat(frAwal)) ?? 0) || 0;
                 const lJamVal = jam > 0 ? (solar / jam) : 0;
 
                 totalJam += jam;
                 totalSolar += solar;
 
-                // Status Konsumsi Genset 1250 kVA
                 let statusHtml = '';
                 if (lJamVal > 250) {
                     statusHtml = `<span class="status-badge"><span class="dot dot-boros"></span> Boros</span>`;
@@ -433,7 +433,6 @@
                     statusHtml = `<span class="status-badge"><span class="dot dot-normal"></span> Normal</span>`;
                 }
 
-                // Format Tanggal
                 let tanggalTampil = '-';
                 if (item.tanggal) {
                     if (typeof item.tanggal === 'string' && item.tanggal.includes('-')) {
@@ -454,17 +453,19 @@
                     }
                 }
 
-                const rentangJam = (item.jamAwal && item.jamAkhir) ? `${item.jamAwal} - ${item.jamAkhir}` : '-';
+                const jAwal = item.jamAwal ?? item['Jam Awal'] ?? '';
+                const jAkhir = item.jamAkhir ?? item['Jam Akhir'] ?? '';
+                const rentangJam = (jAwal && jAkhir) ? `${jAwal} - ${jAkhir}` : '-';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${tanggalTampil}</td>
-                    <td>${item.genset || '-'}</td>
-                    <td>${item.teknisi || '-'}</td>
+                    <td>${unitGenset}</td>
+                    <td>${namaTeknisi}</td>
                     <td>${rentangJam}</td>
                     <td>${jam.toFixed(2)}</td>
-                    <td>${item.fillriteAwal}</td>
-                    <td>${item.fillriteAkhir}</td>
+                    <td>${frAwal}</td>
+                    <td>${frAkhir}</td>
                     <td>${solar.toFixed(2)}</td>
                     <td>${lJamVal.toFixed(2)}</td>
                     <td>${statusHtml}</td>
@@ -485,7 +486,6 @@
         document.getElementById('statTotalTransaksi').innerText = totalTransaksi;
     }
 
-    // 4. HAPUS DATA
     function hapusData(id) {
         if (confirm("Apakah Anda yakin ingin menghapus data ini dari Google Sheets?")) {
             fetch(SCRIPT_URL, {
@@ -502,14 +502,12 @@
         }
     }
 
-    // 5. EXPORT TO EXCEL
     function exportExcel() {
         const table = document.getElementById("tabelRekap");
         const wb = XLSX.utils.table_to_book(table, { sheet: "Rekap Solar" });
         XLSX.writeFile(wb, `Rekap_Pemakaian_Solar_1250kVA_${new Date().toISOString().split('T')[0]}.xlsx`);
     }
 
-    // 6. CETAK PDF
     function cetakPDF() {
         const element = document.getElementById('areaCetak');
         const headerCetak = document.querySelector('.header-cetak');
