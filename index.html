@@ -392,122 +392,111 @@
     });
 
     function tampilkanData() {
-    const filterPN = document.getElementById('filterPN').value;
-    const tbody = document.getElementById('tabelData');
-    tbody.innerHTML = '';
+        const filterPN = document.getElementById('filterPN').value;
+        const tbody = document.getElementById('tabelData');
+        tbody.innerHTML = '';
 
-    const dataFiltered = listDataGlobal.filter(item => {
-        if (filterPN === 'SEMUA') return true;
-        // Cari nilai PN secara fleksibel
-        const valPN = item.pn || item.PN || item.Pn || '';
-        return valPN === filterPN;
-    });
+        const dataFiltered = listDataGlobal.filter(item => {
+            if (filterPN === 'SEMUA') return true;
+            const valPN = item.pn || item.PN || item.Pn || '';
+            return valPN === filterPN;
+        });
 
-    const textFilter = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
-    document.getElementById('labelStatusTabel').innerText = textFilter;
+        const textFilter = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
+        document.getElementById('labelStatusTabel').innerText = textFilter;
 
-    let totalJam = 0;
-    let totalSolar = 0;
+        let totalJam = 0;
+        let totalSolar = 0;
 
-    if (dataFiltered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
-    } else {
-        dataFiltered.forEach((item) => {
-            // NORMALISASI KEY (Ubah seluruh header sheet jadi huruf kecil tanpa spasi)
-            let itemNorm = {};
-            for (let key in item) {
-                let cleanKey = key.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
-                itemNorm[cleanKey] = item[key];
-            }
+        if (dataFiltered.length === 0) {
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
+        } else {
+            dataFiltered.forEach((item) => {
+                // NORMALISASI KEY HEADER GOOGLE SHEETS
+                let itemNorm = {};
+                for (let key in item) {
+                    let cleanKey = key.toString().toLowerCase().replace(/[^a-z0-9]/g, '');
+                    itemNorm[cleanKey] = item[key];
+                }
 
-            // AMBIL DATA DENGAN KEY NORMALISASI
-            const idVal = itemNorm['id'] || item.id || Date.now();
-            const tanggalVal = itemNorm['tanggal'] || item.tanggal || '-';
-            const unitGenset = itemNorm['genset'] || itemNorm['unit'] || '-';
-            const namaTeknisi = itemNorm['teknisi'] || itemNorm['operator'] || '-';
-            
-            const jAwal = itemNorm['jamawal'] || '-';
-            const jAkhir = itemNorm['jamakhir'] || '-';
-            const rentangJam = (jAwal !== '-' && jAkhir !== '-') ? `${jAwal} - ${jAkhir}` : (jAwal !== '-' ? jAwal : '-');
+                const idVal = itemNorm['id'] || item.id || Date.now();
+                const tanggalVal = itemNorm['tanggal'] || item.tanggal || '-';
+                const unitGenset = itemNorm['genset'] || itemNorm['unit'] || '-';
+                const namaTeknisi = itemNorm['teknisi'] || itemNorm['operator'] || '-';
+                
+                const jAwal = itemNorm['jamawal'] || '-';
+                const jAkhir = itemNorm['jamakhir'] || '-';
+                const rentangJam = (jAwal !== '-' && jAkhir !== '-') ? `${jAwal} - ${jAkhir}` : (jAwal !== '-' ? jAwal : '-');
 
-            const jam = parseFloat(itemNorm['jamoperasi'] || itemNorm['durasi'] || 0) || 0;
-            const frAwal = itemNorm['fillriteawal'] || itemNorm['frawal'] || '-';
-            const frAkhir = itemNorm['fillriteakhir'] || itemNorm['frakhir'] || '-';
-            
-            let solar = parseFloat(itemNorm['totalsolar'] || itemNorm['solar'] || 0);
-            if (!solar && frAwal !== '-' && frAkhir !== '-') {
-                solar = parseFloat(frAkhir) - parseFloat(frAwal);
-            }
-            solar = solar || 0;
+                const jam = parseFloat(itemNorm['jamoperasi'] || itemNorm['durasi'] || 0) || 0;
+                const frAwal = itemNorm['fillriteawal'] || itemNorm['frawal'] || '-';
+                const frAkhir = itemNorm['fillriteakhir'] || itemNorm['frakhir'] || '-';
+                
+                let solar = parseFloat(itemNorm['totalsolar'] || itemNorm['solar'] || 0);
+                if (!solar && frAwal !== '-' && frAkhir !== '-') {
+                    solar = parseFloat(frAkhir) - parseFloat(frAwal);
+                }
+                solar = solar || 0;
 
-            let lJamVal = parseFloat(itemNorm['ljam'] || 0);
-            if (!lJamVal && jam > 0) {
-                lJamVal = solar / jam;
-            }
-            lJamVal = lJamVal || 0;
+                let lJamVal = parseFloat(itemNorm['ljam'] || 0);
+                if (!lJamVal && jam > 0) {
+                    lJamVal = solar / jam;
+                }
+                lJamVal = lJamVal || 0;
 
-            totalJam += jam;
-            totalSolar += solar;
+                totalJam += jam;
+                totalSolar += solar;
 
-            // Status Konsumsi Genset 1250 kVA
-            let statusHtml = '';
-            if (lJamVal > 250) {
-                statusHtml = `<span class="status-badge"><span class="dot dot-boros"></span> Boros</span>`;
-            } else if (lJamVal >= 210) {
-                statusHtml = `<span class="status-badge"><span class="dot dot-tinggi"></span> Tinggi</span>`;
-            } else {
-                statusHtml = `<span class="status-badge"><span class="dot dot-normal"></span> Normal</span>`;
-            }
-
-            // FORMAT TANGGAL
-            let tanggalTampil = '-';
-            if (tanggalVal && tanggalVal !== '-') {
-                if (typeof tanggalVal === 'string' && tanggalVal.includes('-')) {
-                    let parts = tanggalVal.split('T')[0].split('-');
-                    if (parts.length === 3) {
-                        tanggalTampil = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
-                    }
+                // Status Konsumsi Genset 1250 kVA
+                let statusHtml = '';
+                if (lJamVal > 250) {
+                    statusHtml = `<span class="status-badge"><span class="dot dot-boros"></span> Boros</span>`;
+                } else if (lJamVal >= 210) {
+                    statusHtml = `<span class="status-badge"><span class="dot dot-tinggi"></span> Tinggi</span>`;
                 } else {
-                    let d = new Date(tanggalVal);
-                    if (!isNaN(d.getTime())) {
-                        let day = String(d.getDate()).padStart(2, '0');
-                        let month = String(d.getMonth() + 1).padStart(2, '0');
-                        let year = d.getFullYear();
-                        tanggalTampil = `${day}/${month}/${year}`;
+                    statusHtml = `<span class="status-badge"><span class="dot dot-normal"></span> Normal</span>`;
+                }
+
+                // Format Tanggal
+                let tanggalTampil = '-';
+                if (tanggalVal && tanggalVal !== '-') {
+                    if (typeof tanggalVal === 'string' && tanggalVal.includes('-')) {
+                        let parts = tanggalVal.split('T')[0].split('-');
+                        if (parts.length === 3) {
+                            tanggalTampil = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                        }
                     } else {
-                        tanggalTampil = tanggalVal;
+                        let d = new Date(tanggalVal);
+                        if (!isNaN(d.getTime())) {
+                            let day = String(d.getDate()).padStart(2, '0');
+                            let month = String(d.getMonth() + 1).padStart(2, '0');
+                            let year = d.getFullYear();
+                            tanggalTampil = `${day}/${month}/${year}`;
+                        } else {
+                            tanggalTampil = tanggalVal;
+                        }
                     }
                 }
-            }
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${tanggalTampil}</td>
-                <td>${unitGenset}</td>
-                <td>${namaTeknisi}</td>
-                <td>${rentangJam}</td>
-                <td>${jam.toFixed(2)}</td>
-                <td>${frAwal}</td>
-                <td>${frAkhir}</td>
-                <td>${solar.toFixed(2)}</td>
-                <td>${lJamVal.toFixed(2)}</td>
-                <td>${statusHtml}</td>
-                <td class="no-print">
-                    <button class="btn btn-danger btn-sm px-2 py-0" onclick="hapusData('${idVal}')">Hapus</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    const totalTransaksi = dataFiltered.length;
-    const rataRataLJam = totalJam > 0 ? (totalSolar / totalJam) : 0;
-
-    document.getElementById('statTotalJam').innerText = totalJam.toFixed(1);
-    document.getElementById('statTotalSolar').innerText = totalSolar.toFixed(1);
-    document.getElementById('statRataRataLJam').innerText = rataRataLJam.toFixed(2);
-    document.getElementById('statTotalTransaksi').innerText = totalTransaksi;
-}
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${tanggalTampil}</td>
+                    <td>${unitGenset}</td>
+                    <td>${namaTeknisi}</td>
+                    <td>${rentangJam}</td>
+                    <td>${jam.toFixed(2)}</td>
+                    <td>${frAwal}</td>
+                    <td>${frAkhir}</td>
+                    <td>${solar.toFixed(2)}</td>
+                    <td>${lJamVal.toFixed(2)}</td>
+                    <td>${statusHtml}</td>
+                    <td class="no-print">
+                        <button class="btn btn-danger btn-sm px-2 py-0" onclick="hapusData('${idVal}')">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
 
         const totalTransaksi = dataFiltered.length;
         const rataRataLJam = totalJam > 0 ? (totalSolar / totalJam) : 0;
