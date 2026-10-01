@@ -183,8 +183,8 @@
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Nama Operator</label>
-                            <input type="text" id="operator" class="form-control" placeholder="Contoh: BAYU" required>
+                            <label class="form-label fw-semibold">Nama Teknisi</label>
+                            <input type="text" id="teknisi" class="form-control" placeholder="Contoh: BAYU" required>
                         </div>
 
                         <!-- INPUT JAM AWAL & AKHIR (DURASI OTOMATIS) -->
@@ -255,7 +255,7 @@
                                 <tr>
                                     <th>Tanggal</th>
                                     <th>Unit</th>
-                                    <th>Operator</th>
+                                    <th>Teknisi</th>
                                     <th>Jam Awal - Akhir</th>
                                     <th>Durasi (Jam)</th>
                                     <th>FR Awal</th>
@@ -363,7 +363,7 @@
             tanggal: document.getElementById('tanggal').value,
             pn: document.getElementById('pn').value,
             genset: document.getElementById('genset').value,
-            operator: document.getElementById('operator').value,
+            teknisi: document.getElementById('teknisi').value,
             jamAwal: jamAwal,
             jamAkhir: jamAkhir,
             jamOperasi: jamOperasi.toFixed(2),
@@ -460,7 +460,7 @@
                 tr.innerHTML = `
                     <td>${tanggalTampil}</td>
                     <td>${item.genset || '-'}</td>
-                    <td>${item.operator || '-'}</td>
+                    <td>${item.teknisi || '-'}</td>
                     <td>${rentangJam}</td>
                     <td>${jam.toFixed(2)}</td>
                     <td>${item.fillriteAwal}</td>
