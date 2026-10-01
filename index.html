@@ -10,54 +10,102 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- html2pdf.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- SheetJS (xlsx) for Export Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         body {
-            background-color: #f8f9fa;
+            background: linear-gradient(135deg, #e2e8f0 0%, #c6f6d5 50%, #fef08a 100%);
+            background-attachment: fixed;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            position: relative;
+            min-height: 100vh;
+            overflow-x: hidden;
         }
+
+        .sparkle-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 40px 70px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 90px 40px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 160px 120px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(1.5px 1.5px at 230px 190px, #ffffff, rgba(0,0,0,0)),
+                radial-gradient(2px 2px at 300px 60px, #ffffff, rgba(0,0,0,0));
+            background-repeat: repeat;
+            background-size: 350px 350px;
+            animation: sparkleAnim 4s infinite linear;
+            opacity: 0.7;
+        }
+
+        @keyframes sparkleAnim {
+            0% { opacity: 0.3; transform: translateY(0); }
+            50% { opacity: 0.8; }
+            100% { opacity: 0.3; transform: translateY(-20px); }
+        }
+
         .card-custom {
             border: none;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.06);
+            background: rgba(255, 255, 255, 0.92) !important;
+            backdrop-filter: blur(8px);
         }
+
+        .container-fluid { position: relative; z-index: 1; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: 600;
+        }
+        .dot {
+            height: 10px;
+            width: 10px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+        .dot-boros { background-color: #dc3545; }
+        .dot-tinggi { background-color: #ffc107; }
+        .dot-normal { background-color: #198754; }
+
         @media print {
-            .no-print {
-                display: none !important;
-            }
-            body {
-                background-color: #fff !important;
-            }
+            .no-print { display: none !important; }
+            body { background: #fff !important; }
+            .sparkle-container { display: none !important; }
             .card-custom {
                 box-shadow: none !important;
                 border: 1px solid #dee2e6 !important;
+                background: #fff !important;
             }
-            .table-responsive {
-                overflow: visible !important;
-            }
-        }
-        #areaCetak {
-            padding: 10px;
-            background: #ffffff;
-            border-radius: 8px;
+            .table-responsive { overflow: visible !important; }
         }
     </style>
 </head>
 <body class="py-4">
 
+<div class="sparkle-container"></div>
+
 <div class="container-fluid px-4">
     <!-- Header Utama -->
     <div class="row mb-3 no-print">
         <div class="col-12 text-center">
-            <h2 class="fw-bold text-dark"><i class="fa-solid fa-gas-pump text-warning me-2"></i>Rekap Pemakaian Solar Genset</h2>
-            <p class="text-muted m-0">Sistem Pencatatan Volume Flow Meter Fill-Rite (Online Sync)</p>
+            <h2 class="fw-bold text-dark"><i class="fa-solid fa-gas-pump text-warning me-2"></i>REKAP PEMAKAIAN SOLAR GENSET</h2>
+            <p class="text-muted m-0">Sistem Pencatatan Volume Flow Meter Fill-Rite & Jam Operasi (Online Sync)</p>
             <span class="badge bg-dark mt-2 fs-6">Kapasitas Genset: 1250 kVA</span>
         </div>
     </div>
 
-    <!-- Filter Dashboard (PN Selection) -->
+    <!-- Filter Dashboard -->
     <div class="row mb-4 no-print justify-content-center">
         <div class="col-md-6 col-lg-4">
-            <div class="card card-custom p-2 bg-white border">
+            <div class="card card-custom p-2 border">
                 <div class="d-flex align-items-center gap-2">
                     <label class="fw-bold text-nowrap mb-0 ms-2"><i class="fa-solid fa-filter text-primary me-1"></i> Filter Dashboard:</label>
                     <select id="filterPN" class="form-select fw-bold border-primary" onchange="tampilkanData()">
@@ -70,50 +118,40 @@
         </div>
     </div>
 
-    <!-- Area Konten yang Dicetak ke PDF -->
+    <!-- Area Konten Cetak -->
     <div id="areaCetak">
-        <!-- Header Dokumen Cetak PDF -->
         <div class="row mb-3 d-none header-cetak">
             <div class="col-12 text-center border-bottom pb-3 mb-3">
-                <h3 class="fw-bold text-uppercase m-0">Laporan Pemakaian Solar Genset (Fill-Rite)</h3>
-                <p class="fw-semibold text-primary m-0">Spesifikasi Unit: Genset 1250 kVA | <span id="labelFilterPDF">Semua PN</span></p>
+                <h3 class="fw-bold text-uppercase m-0">Laporan Pemakaian Solar Genset 1250 kVA</h3>
+                <p class="fw-semibold text-primary m-0">Filter: <span id="labelFilterPDF">Semua PN</span></p>
                 <p class="text-muted small m-0">Tanggal Cetak: <span id="tanggalCetak"></span></p>
             </div>
         </div>
 
         <!-- Ringkasan Statistik -->
         <div class="row mb-4">
-            <div class="col-md-4 mb-2">
-                <div class="card card-custom bg-primary text-white p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Total Pemakaian Solar (<span class="labelPN">Semua</span>)</h6>
-                            <h3 class="fw-bold mb-0"><span id="statTotalSolar">0</span> <small class="fs-6">Liter</small></h3>
-                        </div>
-                        <i class="fa-solid fa-gas-pump fa-2x opacity-50 no-print"></i>
-                    </div>
+            <div class="col-md-3 mb-2">
+                <div class="card card-custom p-3 text-center border">
+                    <h6 class="text-muted mb-1 fw-bold">Total Jam Operasi</h6>
+                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalJam">0.0</span> <small class="fs-6">Jam</small></h3>
                 </div>
             </div>
-            <div class="col-md-4 mb-2">
-                <div class="card card-custom bg-success text-white p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Total Transaksi (<span class="labelPN">Semua</span>)</h6>
-                            <h3 class="fw-bold mb-0"><span id="statTotalTransaksi">0</span> <small class="fs-6">Pencatatan</small></h3>
-                        </div>
-                        <i class="fa-solid fa-list-check fa-2x opacity-50 no-print"></i>
-                    </div>
+            <div class="col-md-3 mb-2">
+                <div class="card card-custom p-3 text-center border">
+                    <h6 class="text-muted mb-1 fw-bold">Total Solar</h6>
+                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalSolar">0.0</span> <small class="fs-6">Liter</small></h3>
                 </div>
             </div>
-            <div class="col-md-4 mb-2">
-                <div class="card card-custom bg-info text-white p-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <h6 class="mb-1">Rata-rata Solar / Pengisian</h6>
-                            <h3 class="fw-bold mb-0"><span id="statRataRata">0</span> <small class="fs-6">Liter</small></h3>
-                        </div>
-                        <i class="fa-solid fa-chart-line fa-2x opacity-50 no-print"></i>
-                    </div>
+            <div class="col-md-3 mb-2">
+                <div class="card card-custom p-3 text-center border">
+                    <h6 class="text-muted mb-1 fw-bold">Rata-rata L/Jam</h6>
+                    <h3 class="fw-bold text-dark mb-0"><span id="statRataRataLJam">0.00</span> <small class="fs-6">L/Jam</small></h3>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card card-custom p-3 text-center border">
+                    <h6 class="text-muted mb-1 fw-bold">Total Entry</h6>
+                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalTransaksi">0</span></h3>
                 </div>
             </div>
         </div>
@@ -121,8 +159,8 @@
         <div class="row">
             <!-- Form Input -->
             <div class="col-lg-4 mb-4 no-print">
-                <div class="card card-custom p-4 bg-white">
-                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Input Fill-Rite</h5>
+                <div class="card card-custom p-4">
+                    <h5 class="fw-bold mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Input Pemakaian Genset</h5>
                     <form id="formGenset">
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Tanggal</label>
@@ -139,33 +177,64 @@
                             <div class="col-6 mb-3">
                                 <label class="form-label fw-semibold">Pilihan Genset</label>
                                 <select id="genset" class="form-select" required>
-                                    <option value="Genset A">Genset A</option>
-                                    <option value="Genset B">Genset B</option>
+                                    <option value="GENSET-01">GENSET-01</option>
+                                    <option value="GENSET-02">GENSET-02</option>
                                 </select>
                             </div>
                         </div>
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Meteran Fill-Rite Awal (L)</label>
-                            <input type="number" step="0.1" id="fillriteAwal" class="form-control" placeholder="Contoh: 15400.0" required>
+                            <label class="form-label fw-semibold">Nama Operator</label>
+                            <input type="text" id="operator" class="form-control" placeholder="Contoh: BAYU" required>
                         </div>
+
+                        <!-- INPUT JAM AWAL & AKHIR (DURASI OTOMATIS) -->
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-semibold">Jam Awal</label>
+                                <input type="time" id="jamAwal" class="form-control" onchange="hitungDurasiOtomatis()" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-semibold">Jam Akhir</label>
+                                <input type="time" id="jamAkhir" class="form-control" onchange="hitungDurasiOtomatis()" required>
+                            </div>
+                        </div>
+
+                        <!-- DISPLAY DURASI -->
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Meteran Fill-Rite Akhir (L)</label>
-                            <input type="number" step="0.1" id="fillriteAkhir" class="form-control" placeholder="Contoh: 15580.0" required>
+                            <label class="form-label fw-semibold">Durasi Operasi (Jam)</label>
+                            <input type="number" step="0.01" id="jamOperasi" class="form-control bg-light" placeholder="Terhitung otomatis" readonly>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-semibold">FR Awal (L)</label>
+                                <input type="number" step="0.1" id="fillriteAwal" class="form-control" placeholder="167" required>
+                            </div>
+                            <div class="col-6 mb-3">
+                                <label class="form-label fw-semibold">FR Akhir (L)</label>
+                                <input type="number" step="0.1" id="fillriteAkhir" class="form-control" placeholder="214" required>
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Keterangan / Catatan</label>
-                            <input type="text" id="keterangan" class="form-control" placeholder="Opsional (misal: Pengisian Rutin)">
+                            <input type="text" id="keterangan" class="form-control" placeholder="Opsional">
                         </div>
-                        <button type="submit" id="btnSubmit" class="btn btn-primary w-100 fw-bold shadow-sm">
-                            <i class="fa-solid fa-plus me-1"></i> Tambah Data
-                        </button>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" id="btnSubmit" class="btn btn-success fw-bold flex-grow-1 shadow-sm">
+                                <i class="fa-solid fa-plus me-1"></i> Tambah Data
+                            </button>
+                            <button type="button" class="btn btn-primary fw-bold shadow-sm" onclick="exportExcel()">
+                                <i class="fa-solid fa-file-excel me-1"></i> Export
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
 
             <!-- Tabel Rekap -->
             <div class="col-lg-8" id="bagianTabel">
-                <div class="card card-custom p-4 bg-white">
+                <div class="card card-custom p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <h5 class="fw-bold m-0"><i class="fa-solid fa-list me-2 text-primary"></i>Riwayat Penggunaan Solar</h5>
@@ -175,24 +244,26 @@
                             <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="muatDataDariSheets()" title="Refresh Data">
                                 <i class="fa-solid fa-rotate me-1"></i> Refresh
                             </button>
-                            <button class="btn btn-success btn-sm fw-semibold" onclick="cetakPDF()">
-                                <i class="fa-solid fa-file-pdf me-1"></i> Cetak PDF
-                            </button>
-                            <button class="btn btn-outline-secondary btn-sm" onclick="window.print()" title="Cetak dengan Printer">
-                                <i class="fa-solid fa-print"></i>
+                            <button class="btn btn-sm fw-semibold text-white" style="background-color: #6f42c1;" onclick="cetakPDF()">
+                                <i class="fa-solid fa-print me-1"></i> Cetak PDF
                             </button>
                         </div>
                     </div>
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle border">
-                            <thead class="table-light">
+                        <table class="table table-hover align-middle border text-center" id="tabelRekap">
+                            <thead class="table-primary text-white">
                                 <tr>
                                     <th>Tanggal</th>
-                                    <th>PN</th>
                                     <th>Unit</th>
-                                    <th>Fill-Rite Awal - Akhir</th>
-                                    <th>Total Solar (L)</th>
-                                    <th>Ket.</th>
+                                    <th>Operator</th>
+                                    <th>Jam Awal - Akhir</th>
+                                    <th>Durasi (Jam)</th>
+                                    <th>FR Awal</th>
+                                    <th>FR Akhir</th>
+                                    <th>Solar (L)</th>
+                                    <th>L/Jam</th>
+                                    <th>Status</th>
+                                    <th class="no-print">Aksi</th>
                                 </tr>
                             </thead>
                             <tbody id="tabelData">
@@ -216,12 +287,36 @@
         muatDataDariSheets();
     });
 
-    // 1. MENGAMBIL HISTORY DATA DARI GOOGLE SHEETS VIA DO-GET
+    // HITUNG DURASI OTOMATIS BERDASARKAN JAM AWAL DAN AKHIR
+    function hitungDurasiOtomatis() {
+        const jamAwalVal = document.getElementById('jamAwal').value;
+        const jamAkhirVal = document.getElementById('jamAkhir').value;
+
+        if (jamAwalVal && jamAkhirVal) {
+            const [h1, m1] = jamAwalVal.split(':').map(Number);
+            const [h2, m2] = jamAkhirVal.split(':').map(Number);
+
+            let t1 = h1 * 60 + m1;
+            let t2 = h2 * 60 + m2;
+
+            // Jika jam akhir melintasi tengah malam (misal 22:00 ke 02:00)
+            if (t2 < t1) {
+                t2 += 24 * 60;
+            }
+
+            const selisihMenit = t2 - t1;
+            const durasiJam = (selisihMenit / 60).toFixed(2);
+
+            document.getElementById('jamOperasi').value = durasiJam;
+        }
+    }
+
+    // 1. MEMUAT DATA
     function muatDataDariSheets() {
         const tbody = document.getElementById('tabelData');
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="text-center py-4 text-primary">
+                <td colspan="11" class="text-center py-4 text-primary">
                     <i class="fa-solid fa-spinner fa-spin fa-2x mb-2"></i>
                     <div>Memuat riwayat dari Google Sheets...</div>
                 </td>
@@ -234,17 +329,20 @@
                 tampilkanData();
             })
             .catch(err => {
-                console.error("Gagal sinkronisasi dengan Google Sheets:", err);
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center text-danger py-3"><i class="fa-solid fa-circle-exclamation me-1"></i> Gagal terhubung ke Google Sheets.</td></tr>`;
+                console.error("Gagal sinkronisasi:", err);
+                tbody.innerHTML = `<tr><td colspan="11" class="text-center text-danger py-3"><i class="fa-solid fa-circle-exclamation me-1"></i> Gagal terhubung ke Google Sheets.</td></tr>`;
             });
     }
 
-    // 2. MENGIRIM DATA BARU KE GOOGLE SHEETS VIA DO-POST
+    // 2. MENAMBAH DATA BARU
     const formGenset = document.getElementById('formGenset');
     formGenset.addEventListener('submit', function(e) {
         e.preventDefault();
 
         const btnSubmit = document.getElementById('btnSubmit');
+        const jamAwal = document.getElementById('jamAwal').value;
+        const jamAkhir = document.getElementById('jamAkhir').value;
+        const jamOperasi = parseFloat(document.getElementById('jamOperasi').value || 0);
         const fillriteAwal = parseFloat(document.getElementById('fillriteAwal').value);
         const fillriteAkhir = parseFloat(document.getElementById('fillriteAkhir').value);
 
@@ -256,14 +354,23 @@
         btnSubmit.disabled = true;
         btnSubmit.innerHTML = `<i class="fa-solid fa-spinner fa-spin me-1"></i> Menyimpan...`;
 
+        const totalSolar = fillriteAkhir - fillriteAwal;
+        const lJam = jamOperasi > 0 ? (totalSolar / jamOperasi) : 0;
+
         const dataBaru = {
+            action: 'create',
             id: Date.now(),
             tanggal: document.getElementById('tanggal').value,
             pn: document.getElementById('pn').value,
             genset: document.getElementById('genset').value,
+            operator: document.getElementById('operator').value,
+            jamAwal: jamAwal,
+            jamAkhir: jamAkhir,
+            jamOperasi: jamOperasi.toFixed(2),
             fillriteAwal: fillriteAwal,
             fillriteAkhir: fillriteAkhir,
-            totalSolar: (fillriteAkhir - fillriteAwal).toFixed(1),
+            totalSolar: totalSolar.toFixed(2),
+            lJam: lJam.toFixed(2),
             keterangan: document.getElementById('keterangan').value || '-'
         };
 
@@ -274,12 +381,11 @@
             body: JSON.stringify(dataBaru)
         })
         .then(() => {
-            alert("Data berhasil tersimpan di Google Sheets!");
+            alert("Data berhasil tersimpan!");
             formGenset.reset();
             document.getElementById('tanggal').valueAsDate = new Date();
             btnSubmit.disabled = false;
             btnSubmit.innerHTML = `<i class="fa-solid fa-plus me-1"></i> Tambah Data`;
-            
             setTimeout(muatDataDariSheets, 1000);
         })
         .catch(err => {
@@ -289,7 +395,7 @@
         });
     });
 
-    // 3. RENDER DATA TERFILTER PADA TABEL DAN DASHBOARD
+    // 3. TAMPILKAN DATA & CALCULATE STATS
     function tampilkanData() {
         const filterPN = document.getElementById('filterPN').value;
         const tbody = document.getElementById('tabelData');
@@ -301,71 +407,123 @@
         });
 
         const textFilter = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
-        document.querySelectorAll('.labelPN').forEach(el => el.innerText = textFilter);
         document.getElementById('labelStatusTabel').innerText = textFilter;
 
+        let totalJam = 0;
         let totalSolar = 0;
 
         if (dataFiltered.length === 0) {
-            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="11" class="text-center text-muted py-3">Tidak ada data terdeteksi untuk ${textFilter}</td></tr>`;
         } else {
-            dataFiltered.forEach(item => {
-                totalSolar += parseFloat(item.totalSolar || 0);
+            dataFiltered.forEach((item) => {
+                const jam = parseFloat(item.jamOperasi || 0);
+                const solar = parseFloat(item.totalSolar || (item.fillriteAkhir - item.fillriteAwal) || 0);
+                const lJamVal = jam > 0 ? (solar / jam) : 0;
 
-                // --- PERBAIKAN FORMAT TANGGAL ---
-                let tanggalTampil = item.tanggal || '-';
+                totalJam += jam;
+                totalSolar += solar;
+
+                // Status Konsumsi Genset 1250 kVA
+                let statusHtml = '';
+                if (lJamVal > 250) {
+                    statusHtml = `<span class="status-badge"><span class="dot dot-boros"></span> Boros</span>`;
+                } else if (lJamVal >= 210) {
+                    statusHtml = `<span class="status-badge"><span class="dot dot-tinggi"></span> Tinggi</span>`;
+                } else {
+                    statusHtml = `<span class="status-badge"><span class="dot dot-normal"></span> Normal</span>`;
+                }
+
+                // Format Tanggal
+                let tanggalTampil = '-';
                 if (item.tanggal) {
-                    const d = new Date(item.tanggal);
-                    if (!isNaN(d.getTime())) {
-                        tanggalTampil = d.toLocaleDateString('id-ID', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric'
-                        });
+                    if (typeof item.tanggal === 'string' && item.tanggal.includes('-')) {
+                        let parts = item.tanggal.split('T')[0].split('-');
+                        if (parts.length === 3) {
+                            tanggalTampil = `${parts[2].padStart(2, '0')}/${parts[1].padStart(2, '0')}/${parts[0]}`;
+                        }
+                    } else {
+                        let d = new Date(item.tanggal);
+                        if (!isNaN(d.getTime())) {
+                            let day = String(d.getDate()).padStart(2, '0');
+                            let month = String(d.getMonth() + 1).padStart(2, '0');
+                            let year = d.getFullYear();
+                            tanggalTampil = `${day}/${month}/${year}`;
+                        } else {
+                            tanggalTampil = item.tanggal;
+                        }
                     }
                 }
+
+                const rentangJam = (item.jamAwal && item.jamAkhir) ? `${item.jamAwal} - ${item.jamAkhir}` : '-';
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td>${tanggalTampil}</td>
-                    <td><span class="badge ${item.pn === 'PN 1' ? 'bg-primary' : 'bg-warning text-dark'}">${item.pn || '-'}</span></td>
-                    <td><span class="badge bg-dark">${item.genset || '-'}</span></td>
-                    <td>${item.fillriteAwal} - ${item.fillriteAkhir} L</td>
-                    <td><strong>${item.totalSolar} L</strong></td>
-                    <td>${item.keterangan}</td>
+                    <td>${item.genset || '-'}</td>
+                    <td>${item.operator || '-'}</td>
+                    <td>${rentangJam}</td>
+                    <td>${jam.toFixed(2)}</td>
+                    <td>${item.fillriteAwal}</td>
+                    <td>${item.fillriteAkhir}</td>
+                    <td>${solar.toFixed(2)}</td>
+                    <td>${lJamVal.toFixed(2)}</td>
+                    <td>${statusHtml}</td>
+                    <td class="no-print">
+                        <button class="btn btn-danger btn-sm px-2 py-0" onclick="hapusData('${item.id}')">Hapus</button>
+                    </td>
                 `;
                 tbody.appendChild(tr);
             });
         }
 
-        // Kalkulasi statistik
         const totalTransaksi = dataFiltered.length;
-        const rataRata = totalTransaksi > 0 ? (totalSolar / totalTransaksi) : 0;
+        const rataRataLJam = totalJam > 0 ? (totalSolar / totalJam) : 0;
 
+        document.getElementById('statTotalJam').innerText = totalJam.toFixed(1);
         document.getElementById('statTotalSolar').innerText = totalSolar.toFixed(1);
+        document.getElementById('statRataRataLJam').innerText = rataRataLJam.toFixed(2);
         document.getElementById('statTotalTransaksi').innerText = totalTransaksi;
-        document.getElementById('statRataRata').innerText = rataRata.toFixed(1);
     }
 
+    // 4. HAPUS DATA
+    function hapusData(id) {
+        if (confirm("Apakah Anda yakin ingin menghapus data ini dari Google Sheets?")) {
+            fetch(SCRIPT_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'delete', id: id })
+            })
+            .then(() => {
+                alert("Permintaan hapus dikirim.");
+                setTimeout(muatDataDariSheets, 1000);
+            })
+            .catch(err => alert("Gagal menghapus: " + err));
+        }
+    }
+
+    // 5. EXPORT TO EXCEL
+    function exportExcel() {
+        const table = document.getElementById("tabelRekap");
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Rekap Solar" });
+        XLSX.writeFile(wb, `Rekap_Pemakaian_Solar_1250kVA_${new Date().toISOString().split('T')[0]}.xlsx`);
+    }
+
+    // 6. CETAK PDF
     function cetakPDF() {
         const element = document.getElementById('areaCetak');
         const headerCetak = document.querySelector('.header-cetak');
         const filterPN = document.getElementById('filterPN').value;
-        const textFilter = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
         
-        document.getElementById('labelFilterPDF').innerText = textFilter;
+        document.getElementById('labelFilterPDF').innerText = filterPN === 'SEMUA' ? 'Semua PN' : filterPN;
         document.getElementById('tanggalCetak').innerText = new Date().toLocaleDateString('id-ID', {
             day: 'numeric', month: 'long', year: 'numeric'
         });
         headerCetak.classList.remove('d-none');
 
-        const elemenTabelCol = document.getElementById('bagianTabel');
-        elemenTabelCol.classList.remove('col-lg-8');
-        elemenTabelCol.classList.add('col-12');
-
         const opt = {
-            margin:       10,
-            filename:     `Laporan_Solar_FillRite_Genset_1250kVA_${filterPN.replace(' ', '_')}.pdf`,
+            margin:       8,
+            filename:     `Laporan_Solar_1250kVA_${filterPN.replace(' ', '_')}.pdf`,
             image:        { type: 'jpeg', quality: 0.98 },
             html2canvas:  { scale: 2, useCORS: true },
             jsPDF:        { unit: 'mm', format: 'a4', orientation: 'landscape' }
@@ -373,8 +531,6 @@
 
         html2pdf().set(opt).from(element).save().then(() => {
             headerCetak.classList.add('d-none');
-            elemenTabelCol.classList.remove('col-12');
-            elemenTabelCol.classList.add('col-lg-8');
         });
     }
 </script>
