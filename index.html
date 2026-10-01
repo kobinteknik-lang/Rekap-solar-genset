@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Rekap Pemakaian Solar Genset 1250 kVA - Fill-Rite</title>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -13,6 +13,21 @@
     <!-- SheetJS (xlsx) for Export Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
+        /* CSS RESET & AUTOSIZE BASE */
+        * {
+            box-sizing: border-box;
+            user-select: none; /* Anti-select teks sederhana */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+        }
+
+        /* Izinkan seleksi teks hanya pada input form agar pengguna tetap nyaman mengetik */
+        input, select, textarea {
+            user-select: text !important;
+            -webkit-user-select: text !important;
+        }
+
         body {
             background: linear-gradient(135deg, #e2e8f0 0%, #c6f6d5 50%, #fef08a 100%);
             background-attachment: fixed;
@@ -20,6 +35,7 @@
             position: relative;
             min-height: 100vh;
             overflow-x: hidden;
+            font-size: clamp(14px, 1vw, 16px); /* Font autosize responsif */
         }
 
         .sparkle-container {
@@ -55,6 +71,7 @@
             box-shadow: 0 8px 20px rgba(0,0,0,0.06);
             background: rgba(255, 255, 255, 0.92) !important;
             backdrop-filter: blur(8px);
+            transition: all 0.3s ease;
         }
 
         .container-fluid { position: relative; z-index: 1; }
@@ -75,6 +92,18 @@
         .dot-tinggi { background-color: #ffc107; }
         .dot-normal { background-color: #198754; }
 
+        /* OPTIMALISASI AUTOSIZE PERANGKAT MOBILE & TABLET */
+        @media (max-width: 768px) {
+            .container-fluid { padding-left: 12px !important; padding-right: 12px !important; }
+            .card-custom { padding: 15px !important; }
+            h2 { font-size: 1.4rem; }
+            .table-responsive {
+                font-size: 12px;
+                border-radius: 8px;
+            }
+            .btn-sm { font-size: 11px; padding: 4px 8px; }
+        }
+
         @media print {
             .no-print { display: none !important; }
             body { background: #fff !important; }
@@ -88,26 +117,26 @@
         }
     </style>
 </head>
-<body class="py-4">
+<body class="py-3 py-md-4">
 
 <div class="sparkle-container"></div>
 
-<div class="container-fluid px-4">
+<div class="container-fluid px-2 px-md-4">
     <!-- Header Utama -->
     <div class="row mb-3 no-print">
         <div class="col-12 text-center">
             <h2 class="fw-bold text-dark"><i class="fa-solid fa-gas-pump text-warning me-2"></i>REKAP PEMAKAIAN SOLAR GENSET</h2>
-            <p class="text-muted m-0">Sistem Pencatatan Volume Flow Meter Fill-Rite & Jam Operasi (Online Sync)</p>
+            <p class="text-muted m-0 small">Sistem Pencatatan Volume Flow Meter Fill-Rite & Jam Operasi (Online Sync)</p>
             <span class="badge bg-dark mt-2 fs-6">Kapasitas Genset: 1250 kVA</span>
         </div>
     </div>
 
     <!-- Filter Dashboard -->
-    <div class="row mb-4 no-print justify-content-center">
-        <div class="col-md-6 col-lg-4">
+    <div class="row mb-3 mb-md-4 no-print justify-content-center">
+        <div class="col-12 col-md-6 col-lg-4">
             <div class="card card-custom p-2 border">
                 <div class="d-flex align-items-center gap-2">
-                    <label class="fw-bold text-nowrap mb-0 ms-2"><i class="fa-solid fa-filter text-primary me-1"></i> Filter Dashboard:</label>
+                    <label class="fw-bold text-nowrap mb-0 ms-2"><i class="fa-solid fa-filter text-primary me-1"></i> Filter:</label>
                     <select id="filterPN" class="form-select fw-bold border-primary" onchange="tampilkanData()">
                         <option value="SEMUA">Semua PN (PN 1 & PN 2)</option>
                         <option value="PN 1">Khusus PN 1</option>
@@ -129,29 +158,29 @@
         </div>
 
         <!-- Ringkasan Statistik -->
-        <div class="row mb-4">
-            <div class="col-md-3 mb-2">
-                <div class="card card-custom p-3 text-center border">
-                    <h6 class="text-muted mb-1 fw-bold">Total Jam Operasi</h6>
-                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalJam">0.0</span> <small class="fs-6">Jam</small></h3>
+        <div class="row mb-3 mb-md-4 g-2">
+            <div class="col-6 col-md-3">
+                <div class="card card-custom p-2 p-md-3 text-center border h-100">
+                    <h6 class="text-muted mb-1 fw-bold small">Total Jam Operasi</h6>
+                    <h4 class="fw-bold text-dark mb-0"><span id="statTotalJam">0.0</span> <small class="fs-6">Jam</small></h4>
                 </div>
             </div>
-            <div class="col-md-3 mb-2">
-                <div class="card card-custom p-3 text-center border">
-                    <h6 class="text-muted mb-1 fw-bold">Total Solar</h6>
-                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalSolar">0.0</span> <small class="fs-6">Liter</small></h3>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom p-2 p-md-3 text-center border h-100">
+                    <h6 class="text-muted mb-1 fw-bold small">Total Solar</h6>
+                    <h4 class="fw-bold text-dark mb-0"><span id="statTotalSolar">0.0</span> <small class="fs-6">Liter</small></h4>
                 </div>
             </div>
-            <div class="col-md-3 mb-2">
-                <div class="card card-custom p-3 text-center border">
-                    <h6 class="text-muted mb-1 fw-bold">Rata-rata L/Jam</h6>
-                    <h3 class="fw-bold text-dark mb-0"><span id="statRataRataLJam">0.00</span> <small class="fs-6">L/Jam</small></h3>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom p-2 p-md-3 text-center border h-100">
+                    <h6 class="text-muted mb-1 fw-bold small">Rata-rata L/Jam</h6>
+                    <h4 class="fw-bold text-dark mb-0"><span id="statRataRataLJam">0.00</span> <small class="fs-6">L/Jam</small></h4>
                 </div>
             </div>
-            <div class="col-md-3 mb-2">
-                <div class="card card-custom p-3 text-center border">
-                    <h6 class="text-muted mb-1 fw-bold">Total Entry</h6>
-                    <h3 class="fw-bold text-dark mb-0"><span id="statTotalTransaksi">0</span></h3>
+            <div class="col-6 col-md-3">
+                <div class="card card-custom p-2 p-md-3 text-center border h-100">
+                    <h6 class="text-muted mb-1 fw-bold small">Total Entry</h6>
+                    <h4 class="fw-bold text-dark mb-0"><span id="statTotalTransaksi">0</span></h4>
                 </div>
             </div>
         </div>
@@ -159,22 +188,22 @@
         <div class="row">
             <!-- Form Input -->
             <div class="col-lg-4 mb-4 no-print">
-                <div class="card card-custom p-4">
+                <div class="card card-custom p-3 p-md-4">
                     <h5 class="fw-bold mb-3"><i class="fa-solid fa-pen-to-square me-2 text-primary"></i>Input Pemakaian Genset</h5>
                     <form id="formGenset">
-                        <div class="mb-3">
+                        <div class="mb-2 mb-md-3">
                             <label class="form-label fw-semibold">Tanggal</label>
                             <input type="date" id="tanggal" class="form-control" required>
                         </div>
                         <div class="row">
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">Pilihan PN</label>
                                 <select id="pn" class="form-select" required>
                                     <option value="PN 1">PN 1</option>
                                     <option value="PN 2">PN 2</option>
                                 </select>
                             </div>
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">Pilihan Genset</label>
                                 <select id="genset" class="form-select" required>
                                     <option value="GENSET-01">GENSET-01</option>
@@ -182,35 +211,35 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-2 mb-md-3">
                             <label class="form-label fw-semibold">Nama Teknisi</label>
                             <input type="text" id="teknisi" class="form-control" placeholder="Contoh: BAYU" required>
                         </div>
 
                         <!-- INPUT JAM AWAL & AKHIR -->
                         <div class="row">
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">Jam Awal</label>
                                 <input type="time" id="jamAwal" class="form-control" onchange="hitungDurasiOtomatis()" required>
                             </div>
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">Jam Akhir</label>
                                 <input type="time" id="jamAkhir" class="form-control" onchange="hitungDurasiOtomatis()" required>
                             </div>
                         </div>
 
                         <!-- DISPLAY DURASI -->
-                        <div class="mb-3">
+                        <div class="mb-2 mb-md-3">
                             <label class="form-label fw-semibold">Durasi Operasi (Jam)</label>
                             <input type="number" step="0.01" id="jamOperasi" class="form-control bg-light" placeholder="Terhitung otomatis" readonly>
                         </div>
 
                         <div class="row">
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">FR Awal (L)</label>
                                 <input type="number" step="0.1" id="fillriteAwal" class="form-control" placeholder="167" required>
                             </div>
-                            <div class="col-6 mb-3">
+                            <div class="col-6 mb-2 mb-md-3">
                                 <label class="form-label fw-semibold">FR Akhir (L)</label>
                                 <input type="number" step="0.1" id="fillriteAkhir" class="form-control" placeholder="214" required>
                             </div>
@@ -222,7 +251,7 @@
 
                         <div class="d-flex gap-2">
                             <button type="submit" id="btnSubmit" class="btn btn-success fw-bold flex-grow-1 shadow-sm">
-                                <i class="fa-solid fa-plus me-1"></i> Tambah Data
+                                <i class="fa-solid fa-plus me-1"></i> Tambah
                             </button>
                             <button type="button" class="btn btn-primary fw-bold shadow-sm" onclick="exportExcel()">
                                 <i class="fa-solid fa-file-excel me-1"></i> Export
@@ -234,13 +263,13 @@
 
             <!-- Tabel Rekap -->
             <div class="col-lg-8" id="bagianTabel">
-                <div class="card card-custom p-4">
+                <div class="card card-custom p-3 p-md-4">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <h5 class="fw-bold m-0"><i class="fa-solid fa-list me-2 text-primary"></i>Riwayat Penggunaan Solar</h5>
                             <small class="text-muted no-print">Menampilkan: <strong id="labelStatusTabel">Semua PN</strong></small>
                         </div>
-                        <div class="no-print d-flex gap-2">
+                        <div class="no-print d-flex gap-1 gap-md-2">
                             <button class="btn btn-outline-primary btn-sm fw-semibold" onclick="muatDataDariSheets()" title="Refresh Data">
                                 <i class="fa-solid fa-rotate me-1"></i> Refresh
                             </button>
@@ -278,6 +307,38 @@
 </div>
 
 <script>
+    // ============================================================
+    // 1. SCRIPT PENGAMAN ANTI-INSPECT ELEMENT (SEDERHANA)
+    // ============================================================
+    
+    // Disable Klik Kanan
+    document.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+    });
+
+    // Disable Shortcut Keyboard Inspect Element
+    document.addEventListener('keydown', function(e) {
+        // F12
+        if (e.keyCode === 123) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C
+        if (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74 || e.keyCode === 67)) {
+            e.preventDefault();
+            return false;
+        }
+        // Ctrl+U (View Source)
+        if (e.ctrlKey && e.keyCode === 85) {
+            e.preventDefault();
+            return false;
+        }
+    });
+
+    // ============================================================
+    // 2. SCRIPT UTAMA APLIKASI REKAP SOLAR
+    // ============================================================
+
     const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyZuywZAfpbglCTdrSb0yrciDqo-MdcIQSx7mcCQzPwSGum_MBV2Z2KG4KL6RDoZXXX/exec";
 
     let listDataGlobal = [];
